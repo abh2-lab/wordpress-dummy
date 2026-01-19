@@ -1,42 +1,21 @@
 services:
   wordpress:
-    image: wordpress:php8.2-apache
-    volumes:
-      - wordpress-files:/var/www/html
-      - ./php.ini:/usr/local/etc/php/conf.d/zz-custom.ini
+    image: 'wordpress:latest'
+    ports:
+      - '80:80'
+    restart: always
     environment:
-      - SERVICE_FQDN_WORDPRESS
-      - WORDPRESS_DB_HOST=mysql
-      - WORDPRESS_DB_USER=${SERVICE_USER_WORDPRESS}
-      - WORDPRESS_DB_PASSWORD=${SERVICE_PASSWORD_WORDPRESS}
-      - WORDPRESS_DB_NAME=wordpress
-      - WORDPRESS_CONFIG_EXTRA=
-          define('WP_MEMORY_LIMIT', '512M');
-          define('WP_MAX_MEMORY_LIMIT', '512M');
-    depends_on:
-      mysql:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1"]
-      interval: 5s
-      timeout: 10s
-      retries: 10
-
-  mysql:
-    image: mysql:8
+      WORDPRESS_DB_HOST: '72.62.197.102:5896'
+      WORDPRESS_DB_USER: abh
+      WORDPRESS_DB_PASSWORD: 'abh#STRONGPASS'
+      WORDPRESS_DB_NAME: pingFTPDB
+      WORDPRESS_CONFIG_EXTRA: |
+        @ini_set( 'upload_max_filesize', '512M' );
+        @ini_set( 'post_max_size', '512M' );
+        @ini_set( 'memory_limit', '1024M' );
+        @ini_set( 'max_execution_time', '300' );
+        @ini_set( 'max_input_time', '300' );
     volumes:
-      - mysql-data:/var/lib/mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_ROOT}
-      - MYSQL_DATABASE=wordpress
-      - MYSQL_USER=${SERVICE_USER_WORDPRESS}
-      - MYSQL_PASSWORD=${SERVICE_PASSWORD_WORDPRESS}
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
-      interval: 5s
-      timeout: 20s
-      retries: 10
-
+      - 'wordpress_data:/var/www/html'
 volumes:
-  wordpress-files:
-  mysql-data:
+  wordpress_data: null
