@@ -1,6 +1,7 @@
+# Use the official PHP Apache image
 FROM php:8.3-apache
 
-# Install required PHP extensions for WordPress
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -8,50 +9,59 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     libxml2-dev \
-    curl \
-    unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-    gd \
-    mysqli \
-    pdo \
-    pdo_mysql \
     zip \
-    exif \
-    opcache \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick \
-    && apt-get clean \
+    unzip \
+    wget \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set PHP configuration with increased limits
-RUN echo "upload_max_filesize = 128M" > /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "post_max_size = 128M" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "max_input_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "max_input_vars = 3000" >> /usr/local/etc/php/conf.d/uploads.ini
+# Install PHP extensions (added zip, exif, opcache for WordPress)
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql mysqli zip exif opcache
 
-# Enable Apache mod_rewrite for pretty permalinks
+# Install Imagick (optional but recommended for WordPress)
+RUN apt-get update && apt-get install -y libmagickwand-dev \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && rm -rf /var/lib/apt/lists/*
+
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Set recommended PHP.ini settings for WordPress
-RUN { \
-    echo 'opcache.memory_consumption=128'; \
-    echo 'opcache.interned_strings_buffer=8'; \
-    echo 'opcache.max_accelerated_files=4000'; \
-    echo 'opcache.revalidate_freq=2'; \
-    echo 'opcache.fast_shutdown=1'; \
-    } > /usr/local/etc/php/conf.d/opcache-recommended.ini
+##############################################
+# Set ServerName and permissions
+##############################################
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
+# Ensure Apache allows .htaccess overrides for specific directories
+RUN echo '<Directory /var/www/html>' >> /etc/apache2/apache2.conf && \
+    echo '    AllowOverride All' >> /etc/apache2/apache2.conf && \
+    echo '</Directory>' >> /etc/apache2/apache2.conf
+
+# Extended PHP configuration limits
+RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/custom.ini && \
+    echo "max_execution_time = 600" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "max_input_time = 600" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "post_max_size = 128M" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "upload_max_filesize = 128M" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "max_input_vars = 5000" >> /usr/local/etc/php/conf.d/custom.ini
+
+# Add OPcache configuration for better WordPress performance
+RUN echo "opcache.memory_consumption=128" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.max_accelerated_files=4000" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.fast_shutdown=1" >> /usr/local/etc/php/conf.d/custom.ini
+
+##############################################
 # Download and install WordPress
+##############################################
 RUN curl -o wordpress.tar.gz -fSL https://wordpress.org/latest.tar.gz \
     && tar -xzf wordpress.tar.gz -C /var/www/html --strip-components=1 \
-    && rm wordpress.tar.gz \
-    && chown -R www-data:www-data /var/www/html
+    && rm wordpress.tar.gz
 
 # Create wp-config.php from environment variables
-COPY <<EOF /var/www/html/wp-config.php
+RUN cat > /var/www/html/wp-config.php <<'EOF'
 <?php
 define('DB_NAME', getenv('WORDPRESS_DB_NAME'));
 define('DB_USER', getenv('WORDPRESS_DB_USER'));
@@ -60,7 +70,7 @@ define('DB_HOST', getenv('WORDPRESS_DB_HOST'));
 define('DB_CHARSET', 'utf8mb4');
 define('DB_COLLATE', '');
 
-\$table_prefix = getenv('WORDPRESS_TABLE_PREFIX') ?: 'wp_';
+$table_prefix = getenv('WORDPRESS_TABLE_PREFIX') ?: 'wp_';
 
 define('AUTH_KEY',         getenv('AUTH_KEY') ?: 'changeme-auth-key-' . md5(getenv('WORDPRESS_DB_NAME')));
 define('SECURE_AUTH_KEY',  getenv('SECURE_AUTH_KEY') ?: 'changeme-secure-auth-' . md5(getenv('WORDPRESS_DB_USER')));
@@ -91,9 +101,9 @@ if (!defined('ABSPATH')) {
 require_once ABSPATH . 'wp-settings.php';
 EOF
 
-# Set proper permissions
-RUN chown www-data:www-data /var/www/html/wp-config.php
+# Set correct permissions for the web server user
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 755 /var/www/html
 
-WORKDIR /var/www/html
-
+# Expose the container port
 EXPOSE 80
