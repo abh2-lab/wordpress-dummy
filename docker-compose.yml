@@ -1,21 +1,40 @@
+version: '3.8'
+
 services:
   wordpress:
-    image: 'wordpress:latest'
+    image: wordpress:latest
+    container_name: wordpress
+    restart: unless-stopped
     ports:
-      - '80:80'
-    restart: always
+      - "${APP_PORT:-8080}:80"
     environment:
-      WORDPRESS_DB_HOST: '72.62.197.102:5896'
-      WORDPRESS_DB_USER: abh
-      WORDPRESS_DB_PASSWORD: 'abh#STRONGPASS'
-      WORDPRESS_DB_NAME: pingFTPDB
+      # Database Configuration
+      WORDPRESS_DB_HOST: ${DB_HOST}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      
+      # Optional: Database Table Prefix
+      WORDPRESS_TABLE_PREFIX: ${DB_TABLE_PREFIX:-wp_}
+      
+      # Optional: WordPress Configuration
       WORDPRESS_CONFIG_EXTRA: |
-        @ini_set( 'upload_max_filesize', '512M' );
-        @ini_set( 'post_max_size', '512M' );
-        @ini_set( 'memory_limit', '1024M' );
-        @ini_set( 'max_execution_time', '300' );
-        @ini_set( 'max_input_time', '300' );
+        define('WP_HOME', '${WP_HOME}');
+        define('WP_SITEURL', '${WP_SITEURL}');
+        define('WP_DEBUG', ${WP_DEBUG:-false});
+        define('WP_DEBUG_LOG', ${WP_DEBUG_LOG:-false});
+    
     volumes:
-      - 'wordpress_data:/var/www/html'
+      # Persist WordPress files
+      - wordpress_data:/var/www/html
+    
+    networks:
+      - wordpress_network
+
 volumes:
-  wordpress_data: null
+  wordpress_data:
+    driver: local
+
+networks:
+  wordpress_network:
+    driver: bridge
