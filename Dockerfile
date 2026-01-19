@@ -62,14 +62,14 @@ define('DB_COLLATE', '');
 
 \$table_prefix = getenv('WORDPRESS_TABLE_PREFIX') ?: 'wp_';
 
-define('AUTH_KEY',         'put your unique phrase here');
-define('SECURE_AUTH_KEY',  'put your unique phrase here');
-define('LOGGED_IN_KEY',    'put your unique phrase here');
-define('NONCE_KEY',        'put your unique phrase here');
-define('AUTH_SALT',        'put your unique phrase here');
-define('SECURE_AUTH_SALT', 'put your unique phrase here');
-define('LOGGED_IN_SALT',   'put your unique phrase here');
-define('NONCE_SALT',       'put your unique phrase here');
+define('AUTH_KEY',         getenv('AUTH_KEY') ?: 'changeme-auth-key-' . md5(getenv('WORDPRESS_DB_NAME')));
+define('SECURE_AUTH_KEY',  getenv('SECURE_AUTH_KEY') ?: 'changeme-secure-auth-' . md5(getenv('WORDPRESS_DB_USER')));
+define('LOGGED_IN_KEY',    getenv('LOGGED_IN_KEY') ?: 'changeme-logged-in-' . md5(getenv('WORDPRESS_DB_HOST')));
+define('NONCE_KEY',        getenv('NONCE_KEY') ?: 'changeme-nonce-' . md5(getenv('WORDPRESS_DB_PASSWORD')));
+define('AUTH_SALT',        getenv('AUTH_SALT') ?: 'changeme-auth-salt-' . md5(getenv('WORDPRESS_DB_NAME') . '1'));
+define('SECURE_AUTH_SALT', getenv('SECURE_AUTH_SALT') ?: 'changeme-secure-salt-' . md5(getenv('WORDPRESS_DB_USER') . '2'));
+define('LOGGED_IN_SALT',   getenv('LOGGED_IN_SALT') ?: 'changeme-logged-salt-' . md5(getenv('WORDPRESS_DB_HOST') . '3'));
+define('NONCE_SALT',       getenv('NONCE_SALT') ?: 'changeme-nonce-salt-' . md5(getenv('WORDPRESS_DB_PASSWORD') . '4'));
 
 define('WP_DEBUG', filter_var(getenv('WP_DEBUG'), FILTER_VALIDATE_BOOLEAN));
 define('WP_DEBUG_LOG', filter_var(getenv('WP_DEBUG'), FILTER_VALIDATE_BOOLEAN));
